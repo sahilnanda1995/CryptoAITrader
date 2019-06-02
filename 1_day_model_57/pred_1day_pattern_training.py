@@ -246,7 +246,7 @@ print('dataset length', len(dataset))
 # callTakingProb = nn2_for_1dayCandle.predict_value(trainY, testPredict, train_volume_dataset)
 
 # export prediction and actual prices
-df = pd.DataFrame(data={"timeStamp": np.around(list(train_timeStamp[-1].reshape(-1)), decimals=2),"prediction": np.around(list(testPredict.reshape(-1)), decimals=2), "test_price": np.around(list(arr2.reshape(-1)), decimals=2), "volume": np.around(list(train_volume_dataset.reshape(-1)), decimals=2), "entry_test_price": np.around(list(trainY.reshape(-1)), decimals=2)})
+df = pd.DataFrame(data={"timeStamp": np.around(list(train_timeStamp[-1].reshape(-1)), decimals=2),"prediction": np.around(list(testPredict.reshape(-1)), decimals=2), "test_price": np.around(list(arr2.reshape(-1)), decimals=2), "volume": np.around(list(train_volume_dataset.reshape(-1)), decimals=2), "entry_test_price": np.around(list(testXArr[-1:].reshape(-1)), decimals=2)})
 file_name = "pred_1day_with_volume_pattern_training.csv" 
 df.to_csv(file_name, sep=';', index=None)
 
@@ -395,7 +395,7 @@ for i in range(2098+step, len(dataset)-10, step):
 	# callTakingProb = nn2_for_1dayCandle.predict_value(trainY, testPredict, train_volume_dataset)
 	# print('callTakingProb', callTakingProb)
 	# export prediction and actual prices
-	df = pd.DataFrame(data={"timeStamp": np.around(list(train_timeStamp[-1].reshape(-1)), decimals=2),"prediction": np.around(list(testPredict.reshape(-1)), decimals=2), "test_price": np.around(list(arr2.reshape(-1)), decimals=2), "volume": np.around(list(train_volume_dataset.reshape(-1)), decimals=2), "entry_test_price": np.around(list(trainY.reshape(-1)), decimals=2)})
+	df = pd.DataFrame(data={"timeStamp": np.around(list(train_timeStamp[-1].reshape(-1)), decimals=2),"prediction": np.around(list(testPredict.reshape(-1)), decimals=2), "test_price": np.around(list(arr2.reshape(-1)), decimals=2), "volume": np.around(list(train_volume_dataset.reshape(-1)), decimals=2), "entry_test_price": np.around(list(testXArr[-1:].reshape(-1)), decimals=2)})
 	#file_name = "lstm_result_5min_x_is_10_retraining2"+ str(train_size)+ ".csv" 
 	df.to_csv(file_name, sep=';', mode = 'a', index=None, header=None)
 
