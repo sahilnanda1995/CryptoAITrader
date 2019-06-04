@@ -14,7 +14,7 @@ import time
 # import nn2_for_1dayCandle #helper libraries
 
 
-input_file_3yr = "../bit_2013to2019_1dayCandle.csv"
+input_file_3yr = "../1day_2013to2019.csv"
 # difficulty_input = "blocks-daily.csv"
 print('input_file_3yr length', len(input_file_3yr))
 
@@ -22,23 +22,64 @@ forecastCandle = 0
 # convert an array of values into a dataset matrix
 def create_dataset(dataset, look_back=1):
 	dataX, dataY = [], []
+	global scaler
 	for i in range(len(dataset)-look_back-1-forecastCandle):
-		a = dataset[i:(i+look_back)]
+		a2 = dataset[i:(i+look_back)]
+		a = a2.copy()
+		# print('function xdataset', a)
+
+		vArr = a[0:len(a), 0:4]
+		# print('df3', vArr)
+
+		vArr = vArr.reshape(-1, 1)
+
+		scaler = MinMaxScaler(feature_range=(0, 1))
+		vArr = scaler.fit_transform(vArr)
+		a[0:len(a), 0:4] = vArr.reshape(-1, 4)
+
+
+		for j in range(4, 25):
+			# print('df', a)
+			vArr = a[0:len(a), j]
+			# print('df3', vArr)
+
+			vArr = vArr.reshape(-1, 1)
+
+			scaler_test = MinMaxScaler(feature_range=(0, 1))
+			vArr = scaler_test.fit_transform(vArr)
+			a[0:len(a), j] = vArr.reshape(1, -1)
+
+
+		# print('first_input', a)
+		a = a.reshape(-1, 1)
+		# print('second_input', a)
+		# a = scaler.fit_transform(a)
+		a = a.reshape(-1, 25)
+		# print('third_input', a)
 		dataX.append(a)
+		b2 = dataset[i + look_back + forecastCandle, 3]
+		b = b2.copy()
+		# print('yLabel_input',b)
+		b = np.array(b)
+		b = b.reshape(-1, 1)
+		b = scaler.transform(b)
+		# print('output', b)
+		dataY.append(b[0][0])
 		# print('dataX', dataX)
-		
-		dataY.append(dataset[i + look_back + forecastCandle, 3])
+		# print('dataY', dataY)
 		# print('dataY', dataY)
 	return np.array(dataX), np.array(dataY)
+
+
 # fix random seed for reproducibility
 np.random.seed(5)
 
 # load the dataset
-df = read_csv(input_file_3yr, header=None, index_col=None, delimiter=',', usecols=[1,2,3,4,5])
+df = read_csv(input_file_3yr, header=0, index_col=None, delimiter=';', usecols=[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25])
 # df2 = read_csv(input_file_3yr, header=None, index_col=None, delimiter=',', usecols=[0,1,2,3])
-df2_volume = read_csv(input_file_3yr, header=None, index_col=None, delimiter=',', usecols=[5])
+df2_volume = read_csv(input_file_3yr, header=0, index_col=None, delimiter=';', usecols=[5])
 
-df3_timeStamp = read_csv(input_file_3yr, header=None, index_col=None, delimiter=',', usecols=[0])
+df3_timeStamp = read_csv(input_file_3yr, header=0, index_col=None, delimiter=';', usecols=[0])
 
 # df4_difficulty = read_csv(difficulty_input, header=None, index_col=None, delimiter=',', usecols=[1])
 
@@ -62,15 +103,15 @@ df3_timeStamp = df3_timeStamp.reshape(-1, 1)
 # df4_difficulty = df4_difficulty.reshape(-1, 1)
 
 # normalize the dataset
-scaler = MinMaxScaler(feature_range=(0, 1))
-dataset = scaler.fit_transform(dataset)
+# scaler = MinMaxScaler(feature_range=(0, 1))
+# dataset = scaler.fit_transform(dataset)
 
-dataset=dataset.reshape(-1, 5)
+dataset=dataset.reshape(-1, 25)
 
 print('dataset length', len(dataset))
 
 
-scaler_vol = MinMaxScaler(feature_range=(0, 1))
+# scaler_vol = MinMaxScaler(feature_range=(0, 1))
 # df2_volume = scaler_vol.fit_transform(df2_volume)
 
 # scaler_diff = MinMaxScaler(feature_range=(0, 1))
@@ -137,17 +178,17 @@ print('testYArr', testYArr)
 
 
 # reshape input to be [samples, time steps, features]
-trainX = np.reshape(trainX, (trainX.shape[0], 5, trainX.shape[1]))
-testX = np.reshape(testX, (testX.shape[0], 5, testX.shape[1]))
+trainX = np.reshape(trainX, (trainX.shape[0], 25, trainX.shape[1]))
+testX = np.reshape(testX, (testX.shape[0], 25, testX.shape[1]))
 
 
-window_size, input_shape, dropout_value, activation_function, loss_function, optimizer = look_back, 5, 0.2, 'linear', 'mse', 'adam'
+window_size, input_shape, dropout_value, activation_function, loss_function, optimizer = look_back, 25, 0.2, 'linear', 'mse', 'adam'
 
 
 
 # create and fit the LSTM network, optimizer=adam, 25 neurons, dropout 0.1
 model = Sequential()
-model.add(Bidirectional(LSTM(window_size, return_sequences=True), input_shape=(window_size, input_shape),))
+model.add(Bidirectional(LSTM(window_size, return_sequences=True), input_shape=(input_shape, window_size),))
 model.add(Dropout(dropout_value))
 model.add(Bidirectional(LSTM((window_size*2), return_sequences=True)))
 model.add(Dropout(dropout_value))
@@ -234,8 +275,8 @@ print('dataset length', len(dataset))
 # callTakingProb = nn2_for_1dayCandle.predict_value(trainY, testPredict, train_volume_dataset)
 
 # export prediction and actual prices
-df = pd.DataFrame(data={"timeStamp": np.around(list(train_timeStamp[-1].reshape(-1)), decimals=2),"prediction": np.around(list(testPredict.reshape(-1)), decimals=2), "test_price": np.around(list(arr2.reshape(-1)), decimals=2), "volume": np.around(list(train_volume_dataset.reshape(-1)), decimals=2), "entry_test_price": np.around(list(trainY.reshape(-1)), decimals=2)})
-file_name = "pred_1day_with_volume.csv" 
+df = pd.DataFrame(data={"timeStamp": np.around(list(train_timeStamp[-1].reshape(-1)), decimals=2),"prediction": np.around(list(testPredict.reshape(-1)), decimals=2), "test_price": np.around(list(arr2.reshape(-1)), decimals=2), "volume": np.around(list(train_volume_dataset.reshape(-1)), decimals=2), "entry_test_price": np.around(list(testXArr[-1:].reshape(-1)), decimals=2)})
+file_name = "pred_1day_all_inputs_pattern_training_retrain.csv" 
 df.to_csv(file_name, sep=';', index=None)
 
 step = 1
@@ -299,8 +340,8 @@ for i in range(2098+step, len(dataset)-10, step):
 	# print(len(testY))
 
 	# reshape input to be [samples, time steps, features]
-	trainX = np.reshape(trainX, (trainX.shape[0], 5, trainX.shape[1]))
-	testX = np.reshape(testX, (testX.shape[0], 5, testX.shape[1]))
+	trainX = np.reshape(trainX, (trainX.shape[0], 25, trainX.shape[1]))
+	testX = np.reshape(testX, (testX.shape[0], 25, testX.shape[1]))
 
 	# create and fit the LSTM network, optimizer=adam, 25 neurons, dropout 0.1
 	#model = Sequential()
@@ -308,7 +349,7 @@ for i in range(2098+step, len(dataset)-10, step):
 	#model.add(Dropout(0.1))
 	#model.add(Dense(1))
 	#model.compile(loss='mse', optimizer='adam')
-	# model.fit(trainX, trainY, epochs=30, batch_size=60, verbose=1)
+	model.fit(trainX, trainY, batch_size= 1024, nb_epoch=30)
 
 	# make predictions
 	trainPredict = model.predict(trainX)
@@ -383,7 +424,7 @@ for i in range(2098+step, len(dataset)-10, step):
 	# callTakingProb = nn2_for_1dayCandle.predict_value(trainY, testPredict, train_volume_dataset)
 	# print('callTakingProb', callTakingProb)
 	# export prediction and actual prices
-	df = pd.DataFrame(data={"timeStamp": np.around(list(train_timeStamp[-1].reshape(-1)), decimals=2),"prediction": np.around(list(testPredict.reshape(-1)), decimals=2), "test_price": np.around(list(arr2.reshape(-1)), decimals=2), "volume": np.around(list(train_volume_dataset.reshape(-1)), decimals=2), "entry_test_price": np.around(list(trainY.reshape(-1)), decimals=2)})
+	df = pd.DataFrame(data={"timeStamp": np.around(list(train_timeStamp[-1].reshape(-1)), decimals=2),"prediction": np.around(list(testPredict.reshape(-1)), decimals=2), "test_price": np.around(list(arr2.reshape(-1)), decimals=2), "volume": np.around(list(train_volume_dataset.reshape(-1)), decimals=2), "entry_test_price": np.around(list(testXArr[-1:].reshape(-1)), decimals=2)})
 	#file_name = "lstm_result_5min_x_is_10_retraining2"+ str(train_size)+ ".csv" 
 	df.to_csv(file_name, sep=';', mode = 'a', index=None, header=None)
 

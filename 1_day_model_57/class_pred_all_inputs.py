@@ -14,7 +14,7 @@ import time
 # import nn2_for_1dayCandle #helper libraries
 
 
-input_file_3yr = "../bit_2013to2019_1dayCandle.csv"
+input_file_3yr = "../1day_2013to2019.csv"
 # difficulty_input = "blocks-daily.csv"
 print('input_file_3yr length', len(input_file_3yr))
 
@@ -26,25 +26,57 @@ def create_dataset(dataset, look_back=1):
 		a = dataset[i:(i+look_back)]
 		dataX.append(a)
 		# print('dataX', dataX)
-		
-		dataY.append(dataset[i + look_back + forecastCandle, 3])
+		previousPrice = dataset[i + look_back-1, 3]
+		currentPrice = dataset[i + look_back + forecastCandle, 3]
+		# print('previousPrice', previousPrice)
+		# print('currentPrice', currentPrice)
+		if currentPrice > previousPrice:
+			dataY.append(1)
+		else:
+			dataY.append(0)
+		# dataY.append(dataset[i + look_back + forecastCandle, 3])
 		# print('dataY', dataY)
 	return np.array(dataX), np.array(dataY)
 # fix random seed for reproducibility
 np.random.seed(5)
 
 # load the dataset
-df = read_csv(input_file_3yr, header=None, index_col=None, delimiter=',', usecols=[1,2,3,4,5])
+df = read_csv(input_file_3yr, header=0, index_col=None, delimiter=';', usecols=[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25])
 # df2 = read_csv(input_file_3yr, header=None, index_col=None, delimiter=',', usecols=[0,1,2,3])
-df2_volume = read_csv(input_file_3yr, header=None, index_col=None, delimiter=',', usecols=[5])
+df2_volume = read_csv(input_file_3yr, header=0, index_col=None, delimiter=';', usecols=[5])
 
-df3_timeStamp = read_csv(input_file_3yr, header=None, index_col=None, delimiter=',', usecols=[0])
+df3_timeStamp = read_csv(input_file_3yr, header=0, index_col=None, delimiter=';', usecols=[0])
 
 # df4_difficulty = read_csv(difficulty_input, header=None, index_col=None, delimiter=',', usecols=[1])
 
 print('volumelength', len(df2_volume))
 
 all_y = df.values
+
+
+vArr = all_y[0:len(all_y), 0:4]
+# print('df3', vArr)
+
+vArr = vArr.reshape(-1, 1)
+
+scaler = MinMaxScaler(feature_range=(0, 1))
+vArr = scaler.fit_transform(vArr)
+all_y[0:len(all_y), 0:4] = vArr.reshape(-1, 4)
+
+
+for i in range(4, 25):
+	# print('df', all_y)
+	vArr = all_y[0:len(all_y), i]
+	# print('df3', vArr)
+
+	vArr = vArr.reshape(-1, 1)
+
+	scaler_test = MinMaxScaler(feature_range=(0, 1))
+	vArr = scaler_test.fit_transform(vArr)
+	all_y[0:len(all_y), i] = vArr.reshape(1, -1)
+
+
+
 print(all_y[0:10])
 
 dataset=all_y.reshape(-1, 1)
@@ -62,10 +94,10 @@ df3_timeStamp = df3_timeStamp.reshape(-1, 1)
 # df4_difficulty = df4_difficulty.reshape(-1, 1)
 
 # normalize the dataset
-scaler = MinMaxScaler(feature_range=(0, 1))
-dataset = scaler.fit_transform(dataset)
+# scaler = MinMaxScaler(feature_range=(0, 1))
+# dataset = scaler.fit_transform(dataset)
 
-dataset=dataset.reshape(-1, 5)
+dataset=dataset.reshape(-1, 25)
 
 print('dataset length', len(dataset))
 
@@ -113,7 +145,7 @@ print('trainXArr', trainXArr)
 trainYArr = trainY
 trainYArr = np.array(trainYArr)
 trainYArr = trainYArr.reshape(-1, 1)
-trainYArr = scaler.inverse_transform(trainYArr)
+# trainYArr = scaler.inverse_transform(trainYArr)
 print('trainYArr', trainYArr)
 
 testXArr = []
@@ -132,42 +164,42 @@ print('testXArr', testXArr)
 testYArr = testY
 testYArr = np.array(testYArr)
 testYArr = testYArr.reshape(-1, 1)
-testYArr = scaler.inverse_transform(testYArr)
+# testYArr = scaler.inverse_transform(testYArr)
 print('testYArr', testYArr)
 
 
 # reshape input to be [samples, time steps, features]
-trainX = np.reshape(trainX, (trainX.shape[0], 5, trainX.shape[1]))
-testX = np.reshape(testX, (testX.shape[0], 5, testX.shape[1]))
+trainX = np.reshape(trainX, (trainX.shape[0], 25, trainX.shape[1]))
+testX = np.reshape(testX, (testX.shape[0], 25, testX.shape[1]))
 
 
-window_size, input_shape, dropout_value, activation_function, loss_function, optimizer = look_back, 5, 0.2, 'linear', 'mse', 'adam'
+window_size, input_shape, dropout_value, activation_function, loss_function, optimizer = look_back, 25, 0.2, 'linear', 'binary_crossentropy', 'adam'
 
 
 
 # create and fit the LSTM network, optimizer=adam, 25 neurons, dropout 0.1
 model = Sequential()
-model.add(Bidirectional(LSTM(window_size, return_sequences=True), input_shape=(window_size, input_shape),))
+model.add(Bidirectional(LSTM(window_size, return_sequences=True), input_shape=(input_shape, window_size),))
 model.add(Dropout(dropout_value))
 model.add(Bidirectional(LSTM((window_size*2), return_sequences=True)))
 model.add(Dropout(dropout_value))
 model.add(Bidirectional(LSTM(window_size, return_sequences=False)))
 model.add(Dense(units=1))
 model.add(Activation(activation_function))
-model.compile(loss=loss_function, optimizer=optimizer)
-model.fit(trainX, trainY, batch_size= 1024, nb_epoch=30)
+model.compile(loss=loss_function, optimizer=optimizer, metrics=['accuracy'])
+model.fit(trainX, trainY, batch_size= 60, nb_epoch=30)
 # make predictions
-trainPredict = model.predict(trainX)
-testPredict = model.predict(testX)
+trainPredict = model.predict_classes(trainX)
+testPredict = model.predict_classes(testX)
 
 print(len(trainPredict))
 print(trainPredict[0])
 
 # invert predictions
-trainPredict = scaler.inverse_transform(trainPredict)
-trainY = scaler.inverse_transform([trainY])
-testPredict = scaler.inverse_transform(testPredict)
-testY = scaler.inverse_transform([testY])
+# trainPredict = scaler.inverse_transform(trainPredict)
+# trainY = scaler.inverse_transform([trainY])
+# testPredict = scaler.inverse_transform(testPredict)
+# testY = scaler.inverse_transform([testY])
 
 #print('trainX[first]')
 #print(trainX[0])
@@ -190,10 +222,10 @@ print(len(testPredict))
 
 
 # calculate root mean squared error
-trainScore = math.sqrt(mean_squared_error(trainY[0], trainPredict[:,0]))
-print('Train Score: %.2f RMSE' % (trainScore))
-testScore = math.sqrt(mean_squared_error(testY[0], testPredict[:,0]))
-print('Test Score: %.2f RMSE' % (testScore))
+# trainScore = math.sqrt(mean_squared_error(trainY[0], trainPredict[:,0]))
+# print('Train Score: %.2f RMSE' % (trainScore))
+# testScore = math.sqrt(mean_squared_error(testY[0], testPredict[:,0]))
+# print('Test Score: %.2f RMSE' % (testScore))
 
 # shift train predictions for plotting
 trainPredictPlot = np.empty_like(dataset)
@@ -235,7 +267,7 @@ print('dataset length', len(dataset))
 
 # export prediction and actual prices
 df = pd.DataFrame(data={"timeStamp": np.around(list(train_timeStamp[-1].reshape(-1)), decimals=2),"prediction": np.around(list(testPredict.reshape(-1)), decimals=2), "test_price": np.around(list(arr2.reshape(-1)), decimals=2), "volume": np.around(list(train_volume_dataset.reshape(-1)), decimals=2), "entry_test_price": np.around(list(trainY.reshape(-1)), decimals=2)})
-file_name = "pred_1day_with_volume.csv" 
+file_name = "class_pred_1day_all_inputs_retraining.csv" 
 df.to_csv(file_name, sep=';', index=None)
 
 step = 1
@@ -273,7 +305,7 @@ for i in range(2098+step, len(dataset)-10, step):
 	trainYArr = trainY
 	trainYArr = np.array(trainYArr)
 	trainYArr = trainYArr.reshape(-1, 1)
-	trainYArr = scaler.inverse_transform(trainYArr)
+	# trainYArr = scaler.inverse_transform(trainYArr)
 	print('trainYArr', trainYArr)
 
 	testXArr = []
@@ -291,7 +323,7 @@ for i in range(2098+step, len(dataset)-10, step):
 	testYArr = testY
 	testYArr = np.array(testYArr)
 	testYArr = testYArr.reshape(-1, 1)
-	testYArr = scaler.inverse_transform(testYArr)
+	# testYArr = scaler.inverse_transform(testYArr)
 	print('testYArr', testYArr)
 
 	# print(len(trainX))
@@ -299,8 +331,8 @@ for i in range(2098+step, len(dataset)-10, step):
 	# print(len(testY))
 
 	# reshape input to be [samples, time steps, features]
-	trainX = np.reshape(trainX, (trainX.shape[0], 5, trainX.shape[1]))
-	testX = np.reshape(testX, (testX.shape[0], 5, testX.shape[1]))
+	trainX = np.reshape(trainX, (trainX.shape[0], 25, trainX.shape[1]))
+	testX = np.reshape(testX, (testX.shape[0], 25, testX.shape[1]))
 
 	# create and fit the LSTM network, optimizer=adam, 25 neurons, dropout 0.1
 	#model = Sequential()
@@ -308,17 +340,17 @@ for i in range(2098+step, len(dataset)-10, step):
 	#model.add(Dropout(0.1))
 	#model.add(Dense(1))
 	#model.compile(loss='mse', optimizer='adam')
-	# model.fit(trainX, trainY, epochs=30, batch_size=60, verbose=1)
+	model.fit(trainX, trainY, batch_size= 60, nb_epoch=30)
 
 	# make predictions
-	trainPredict = model.predict(trainX)
-	testPredict = model.predict(testX)
+	trainPredict = model.predict_classes(trainX)
+	testPredict = model.predict_classes(testX)
 
 	# invert predictions
-	trainPredict = scaler.inverse_transform(trainPredict)
-	trainY = scaler.inverse_transform([trainY])
-	testPredict = scaler.inverse_transform(testPredict)
-	testY = scaler.inverse_transform([testY])
+	# trainPredict = scaler.inverse_transform(trainPredict)
+	# trainY = scaler.inverse_transform([trainY])
+	# testPredict = scaler.inverse_transform(testPredict)
+	# testY = scaler.inverse_transform([testY])
 
 	#print('trainX[first]')
 	#print('trainX[first]')
@@ -344,19 +376,19 @@ for i in range(2098+step, len(dataset)-10, step):
 
 
 	# calculate root mean squared error
-	trainScore = math.sqrt(mean_squared_error(trainY[0], trainPredict[:,0]))
+	# trainScore = math.sqrt(mean_squared_error(trainY[0], trainPredict[:,0]))
 	# print('Train Score: %.2f RMSE' % (trainScore))
-	testScore = math.sqrt(mean_squared_error(testY[0], testPredict[:,0]))
+	# testScore = math.sqrt(mean_squared_error(testY[0], testPredict[:,0]))
 	# print('Test Score: %.2f RMSE' % (testScore))
 
 	# shift train predictions for plotting
-	trainPredictPlot = np.empty_like(dataset)
-	trainPredictPlot[:, :] = np.nan
-	trainPredictPlot[look_back:len(trainPredict)+look_back, :] = trainPredict
+	# trainPredictPlot = np.empty_like(dataset)
+	# trainPredictPlot[:, :] = np.nan
+	# trainPredictPlot[look_back:len(trainPredict)+look_back, :] = trainPredict
 
 	# shift test predictions for plotting
-	testPredictPlot = np.empty_like(dataset)
-	testPredictPlot[:, :] = np.nan
+	# testPredictPlot = np.empty_like(dataset)
+	# testPredictPlot[:, :] = np.nan
 	
 	arr2 = testYArr
 	# print('arr2', arr2)
