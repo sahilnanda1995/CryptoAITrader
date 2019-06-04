@@ -242,7 +242,7 @@ print('dataset length', len(dataset))
 
 # export prediction and actual prices
 df = pd.DataFrame(data={"timeStamp": np.around(list(train_timeStamp[-1].reshape(-1)), decimals=2),"prediction": np.around(list(testPredict.reshape(-1)), decimals=2), "test_price": np.around(list(arr2.reshape(-1)), decimals=2), "volume": np.around(list(train_volume_dataset.reshape(-1)), decimals=2), "entry_test_price": np.around(list(trainY.reshape(-1)), decimals=2)})
-file_name = "class_pred_1day_with_volume.csv" 
+file_name = "class_pred_1day_with_volume_retraining.csv" 
 df.to_csv(file_name, sep=';', index=None)
 
 step = 1
@@ -315,7 +315,7 @@ for i in range(2098+step, len(dataset)-10, step):
 	#model.add(Dropout(0.1))
 	#model.add(Dense(1))
 	#model.compile(loss='mse', optimizer='adam')
-	# model.fit(trainX, trainY, epochs=30, batch_size=60, verbose=1)
+	model.fit(trainX, trainY, batch_size= 60, nb_epoch=30)
 
 	# make predictions
 	trainPredict = model.predict_classes(trainX)
