@@ -196,10 +196,12 @@ model.add(Bidirectional(LSTM(window_size, return_sequences=False)))
 model.add(Dense(units=1))
 model.add(Activation(activation_function))
 model.compile(loss=loss_function, optimizer=optimizer)
-model.fit(trainX, trainY, batch_size= 1024, nb_epoch=30)
+model.fit(trainX, trainY, batch_size= 512, nb_epoch=30)
 # make predictions
 trainPredict = model.predict(trainX)
 testPredict = model.predict(testX)
+
+model.save('my_model3.h5')
 
 print(len(trainPredict))
 print(trainPredict[0])
@@ -276,7 +278,7 @@ print('dataset length', len(dataset))
 
 # export prediction and actual prices
 df = pd.DataFrame(data={"timeStamp": np.around(list(train_timeStamp[-1].reshape(-1)), decimals=2),"prediction": np.around(list(testPredict.reshape(-1)), decimals=2), "test_price": np.around(list(arr2.reshape(-1)), decimals=2), "volume": np.around(list(train_volume_dataset.reshape(-1)), decimals=2), "entry_test_price": np.around(list(testXArr[-1:].reshape(-1)), decimals=2)})
-file_name = "pred_1day_all_inputs_pattern_training_retrain.csv" 
+file_name = "pred_1day_all_inputs_pattern_training_retraining3.csv" 
 df.to_csv(file_name, sep=';', index=None)
 
 step = 1
@@ -349,7 +351,7 @@ for i in range(2098+step, len(dataset)-10, step):
 	#model.add(Dropout(0.1))
 	#model.add(Dense(1))
 	#model.compile(loss='mse', optimizer='adam')
-	model.fit(trainX, trainY, batch_size= 1024, nb_epoch=30)
+	model.fit(trainX, trainY, batch_size= 2, nb_epoch=30)
 
 	# make predictions
 	trainPredict = model.predict(trainX)
@@ -432,3 +434,4 @@ for i in range(2098+step, len(dataset)-10, step):
 	#plt.plot(testPredictPlot)
 	#plt.show()
 
+model.save('my_model_retrained3.h5')

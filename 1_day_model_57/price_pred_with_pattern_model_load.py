@@ -4,6 +4,7 @@ import pandas as pd
 from pandas import read_csv
 import math
 from keras.models import Sequential
+from keras.models import load_model
 from keras.layers import Dense
 from keras.layers import LSTM
 from keras.layers import Bidirectional
@@ -14,7 +15,7 @@ import time
 # import nn2_for_1dayCandle #helper libraries
 
 
-input_file_3yr = "../bitfinex_2013to2019_1Day_candle_with_bitcoin_core_dataset.csv"
+input_file_3yr = "../1day_2013to2019.csv"
 # difficulty_input = "blocks-daily.csv"
 print('input_file_3yr length', len(input_file_3yr))
 
@@ -57,14 +58,14 @@ def create_dataset(dataset, look_back=1):
 		a = a.reshape(-1, 25)
 		# print('third_input', a)
 		dataX.append(a)
-		previousPrice = dataset[i + look_back-1, 3]
-		currentPrice = dataset[i + look_back + forecastCandle, 3]
-		# print('previousPrice', previousPrice)
-		# print('currentPrice', currentPrice)
-		if currentPrice > previousPrice:
-			dataY.append(1)
-		else:
-			dataY.append(0)
+		b2 = dataset[i + look_back + forecastCandle, 3]
+		b = b2.copy()
+		# print('yLabel_input',b)
+		b = np.array(b)
+		b = b.reshape(-1, 1)
+		b = scaler.transform(b)
+		# print('output', b)
+		dataY.append(b[0][0])
 		# print('dataX', dataX)
 		# print('dataY', dataY)
 		# print('dataY', dataY)
@@ -154,7 +155,7 @@ print('trainXArr', trainXArr)
 trainYArr = trainY
 trainYArr = np.array(trainYArr)
 trainYArr = trainYArr.reshape(-1, 1)
-# trainYArr = scaler.inverse_transform(trainYArr)
+trainYArr = scaler.inverse_transform(trainYArr)
 print('trainYArr', trainYArr)
 
 testXArr = []
@@ -173,7 +174,7 @@ print('testXArr', testXArr)
 testYArr = testY
 testYArr = np.array(testYArr)
 testYArr = testYArr.reshape(-1, 1)
-# testYArr = scaler.inverse_transform(testYArr)
+testYArr = scaler.inverse_transform(testYArr)
 print('testYArr', testYArr)
 
 
@@ -182,33 +183,34 @@ trainX = np.reshape(trainX, (trainX.shape[0], 25, trainX.shape[1]))
 testX = np.reshape(testX, (testX.shape[0], 25, testX.shape[1]))
 
 
-window_size, input_shape, dropout_value, activation_function, loss_function, optimizer = look_back, 25, 0.2, 'linear', 'binary_crossentropy', 'adam'
+window_size, input_shape, dropout_value, activation_function, loss_function, optimizer = look_back, 25, 0.2, 'linear', 'mse', 'adam'
 
 
 
 # create and fit the LSTM network, optimizer=adam, 25 neurons, dropout 0.1
-model = Sequential()
-model.add(Bidirectional(LSTM(window_size, return_sequences=True), input_shape=(input_shape, window_size),))
-model.add(Dropout(dropout_value))
-model.add(Bidirectional(LSTM((window_size*2), return_sequences=True)))
-model.add(Dropout(dropout_value))
-model.add(Bidirectional(LSTM(window_size, return_sequences=False)))
-model.add(Dense(units=1))
-model.add(Activation(activation_function))
-model.compile(loss=loss_function, optimizer=optimizer, metrics=['accuracy'])
-model.fit(trainX, trainY, batch_size= 60, nb_epoch=30)
+# model = Sequential()
+# model.add(Bidirectional(LSTM(window_size, return_sequences=True), input_shape=(input_shape, window_size),))
+# model.add(Dropout(dropout_value))
+# model.add(Bidirectional(LSTM((window_size*2), return_sequences=True)))
+# model.add(Dropout(dropout_value))
+# model.add(Bidirectional(LSTM(window_size, return_sequences=False)))
+# model.add(Dense(units=1))
+# model.add(Activation(activation_function))
+# model.compile(loss=loss_function, optimizer=optimizer)
+# model.fit(trainX, trainY, batch_size= 512, nb_epoch=30)
 # make predictions
-trainPredict = model.predict_classes(trainX)
-testPredict = model.predict_classes(testX)
+model = load_model('my_model3.h5')
+trainPredict = model.predict(trainX)
+testPredict = model.predict(testX)
 
 print(len(trainPredict))
 print(trainPredict[0])
 
 # invert predictions
-# trainPredict = scaler.inverse_transform(trainPredict)
-# trainY = scaler.inverse_transform([trainY])
-# testPredict = scaler.inverse_transform(testPredict)
-# testY = scaler.inverse_transform([testY])
+trainPredict = scaler.inverse_transform(trainPredict)
+trainY = scaler.inverse_transform([trainY])
+testPredict = scaler.inverse_transform(testPredict)
+testY = scaler.inverse_transform([testY])
 
 #print('trainX[first]')
 #print(trainX[0])
@@ -231,19 +233,19 @@ print(len(testPredict))
 
 
 # calculate root mean squared error
-# trainScore = math.sqrt(mean_squared_error(trainY[0], trainPredict[:,0]))
-# print('Train Score: %.2f RMSE' % (trainScore))
-# testScore = math.sqrt(mean_squared_error(testY[0], testPredict[:,0]))
-# print('Test Score: %.2f RMSE' % (testScore))
+trainScore = math.sqrt(mean_squared_error(trainY[0], trainPredict[:,0]))
+print('Train Score: %.2f RMSE' % (trainScore))
+testScore = math.sqrt(mean_squared_error(testY[0], testPredict[:,0]))
+print('Test Score: %.2f RMSE' % (testScore))
 
-# # shift train predictions for plotting
-# trainPredictPlot = np.empty_like(dataset)
-# trainPredictPlot[:, :] = np.nan
-# trainPredictPlot[look_back:len(trainPredict)+look_back, :] = trainPredict
+# shift train predictions for plotting
+trainPredictPlot = np.empty_like(dataset)
+trainPredictPlot[:, :] = np.nan
+trainPredictPlot[look_back:len(trainPredict)+look_back, :] = trainPredict
 
-# # shift test predictions for plotting
-# testPredictPlot = np.empty_like(dataset)
-# testPredictPlot[:, :] = np.nan
+# shift test predictions for plotting
+testPredictPlot = np.empty_like(dataset)
+testPredictPlot[:, :] = np.nan
 #testPredictPlot[len(trainPredict)+(look_back*2)+1:len(dataset)-1-(forecastCandle*2), :] = testPredict
 
 # plot baseline and predictions
@@ -276,7 +278,7 @@ print('dataset length', len(dataset))
 
 # export prediction and actual prices
 df = pd.DataFrame(data={"timeStamp": np.around(list(train_timeStamp[-1].reshape(-1)), decimals=2),"prediction": np.around(list(testPredict.reshape(-1)), decimals=2), "test_price": np.around(list(arr2.reshape(-1)), decimals=2), "volume": np.around(list(train_volume_dataset.reshape(-1)), decimals=2), "entry_test_price": np.around(list(testXArr[-1:].reshape(-1)), decimals=2)})
-file_name = "class_pred_all_inputs_pattern_training2_retraining.csv" 
+file_name = "pred_1day_all_inputs_pattern_training_retraining3_retest.csv" 
 df.to_csv(file_name, sep=';', index=None)
 
 step = 1
@@ -314,7 +316,7 @@ for i in range(2098+step, len(dataset)-10, step):
 	trainYArr = trainY
 	trainYArr = np.array(trainYArr)
 	trainYArr = trainYArr.reshape(-1, 1)
-	# trainYArr = scaler.inverse_transform(trainYArr)
+	trainYArr = scaler.inverse_transform(trainYArr)
 	print('trainYArr', trainYArr)
 
 	testXArr = []
@@ -332,7 +334,7 @@ for i in range(2098+step, len(dataset)-10, step):
 	testYArr = testY
 	testYArr = np.array(testYArr)
 	testYArr = testYArr.reshape(-1, 1)
-	# testYArr = scaler.inverse_transform(testYArr)
+	testYArr = scaler.inverse_transform(testYArr)
 	print('testYArr', testYArr)
 
 	# print(len(trainX))
@@ -349,17 +351,17 @@ for i in range(2098+step, len(dataset)-10, step):
 	#model.add(Dropout(0.1))
 	#model.add(Dense(1))
 	#model.compile(loss='mse', optimizer='adam')
-	model.fit(trainX, trainY, batch_size= 60, nb_epoch=30)
+	model.fit(trainX, trainY, batch_size= 2, nb_epoch=30)
 
 	# make predictions
-	trainPredict = model.predict_classes(trainX)
-	testPredict = model.predict_classes(testX)
+	trainPredict = model.predict(trainX)
+	testPredict = model.predict(testX)
 
 	# invert predictions
-	# trainPredict = scaler.inverse_transform(trainPredict)
-	# trainY = scaler.inverse_transform([trainY])
-	# testPredict = scaler.inverse_transform(testPredict)
-	# testY = scaler.inverse_transform([testY])
+	trainPredict = scaler.inverse_transform(trainPredict)
+	trainY = scaler.inverse_transform([trainY])
+	testPredict = scaler.inverse_transform(testPredict)
+	testY = scaler.inverse_transform([testY])
 
 	#print('trainX[first]')
 	#print('trainX[first]')
@@ -385,19 +387,19 @@ for i in range(2098+step, len(dataset)-10, step):
 
 
 	# calculate root mean squared error
-	# trainScore = math.sqrt(mean_squared_error(trainY[0], trainPredict[:,0]))
+	trainScore = math.sqrt(mean_squared_error(trainY[0], trainPredict[:,0]))
 	# print('Train Score: %.2f RMSE' % (trainScore))
-	# testScore = math.sqrt(mean_squared_error(testY[0], testPredict[:,0]))
+	testScore = math.sqrt(mean_squared_error(testY[0], testPredict[:,0]))
 	# print('Test Score: %.2f RMSE' % (testScore))
 
 	# shift train predictions for plotting
-	# trainPredictPlot = np.empty_like(dataset)
-	# trainPredictPlot[:, :] = np.nan
-	# trainPredictPlot[look_back:len(trainPredict)+look_back, :] = trainPredict
+	trainPredictPlot = np.empty_like(dataset)
+	trainPredictPlot[:, :] = np.nan
+	trainPredictPlot[look_back:len(trainPredict)+look_back, :] = trainPredict
 
 	# shift test predictions for plotting
-	# testPredictPlot = np.empty_like(dataset)
-	# testPredictPlot[:, :] = np.nan
+	testPredictPlot = np.empty_like(dataset)
+	testPredictPlot[:, :] = np.nan
 	
 	arr2 = testYArr
 	# print('arr2', arr2)
@@ -431,4 +433,3 @@ for i in range(2098+step, len(dataset)-10, step):
 	# plot the actual price, prediction in test data=red line, actual price=blue line
 	#plt.plot(testPredictPlot)
 	#plt.show()
-

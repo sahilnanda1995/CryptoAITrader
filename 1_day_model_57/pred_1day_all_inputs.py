@@ -14,7 +14,7 @@ import time
 # import nn2_for_1dayCandle #helper libraries
 
 
-input_file_3yr = "../1day_2013to2019.csv"
+input_file_3yr = "../bitfinex_2013to2019_1Day_candle_with_bitcoin_core_dataset.csv"
 # difficulty_input = "blocks-daily.csv"
 print('input_file_3yr length', len(input_file_3yr))
 
@@ -259,7 +259,7 @@ print('train_timeStamp', train_timeStamp[-1:])
 
 # export prediction and actual prices
 df = pd.DataFrame(data={"timeStamp": np.around(list(train_timeStamp[-1].reshape(-1)), decimals=2),"prediction": np.around(list(testPredict.reshape(-1)), decimals=2), "test_price": np.around(list(arr2.reshape(-1)), decimals=2), "volume": np.around(list(train_volume_dataset.reshape(-1)), decimals=2), "entry_test_price": np.around(list(trainY.reshape(-1)), decimals=2)})
-file_name = "pred_1day_all_inputs_retraining.csv" 
+file_name = "pred_1day_all_inputs2_retraining.csv" 
 df.to_csv(file_name, sep=';', index=None)
 
 step = 1
