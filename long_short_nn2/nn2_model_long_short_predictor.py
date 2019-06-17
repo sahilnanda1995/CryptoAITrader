@@ -61,6 +61,7 @@ dataX = []
 for i in range(len(priceData)):
     # print(priceData[i])
     dataX.append([priceData[i][1], priceData[i][4], priceData[i][5], volumeData[i][0]])
+    # dataX.append([priceData[i][1], priceData[i][4], priceData[i][5]])
 
 for i in range(len(dataX)):
     print(dataX[i])
@@ -75,11 +76,35 @@ model = Sequential()
 model.add(Dense(25, input_dim=4, activation='relu'))
 model.add(Dense(25, activation='relu'))
 model.add(Dense(1, activation='sigmoid'))
-model.compile(loss='binary_crossentropy', optimizer='adam')
-model.fit(dataX, dataY, epochs=64, verbose=1)
+model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
+history =model.fit(dataX, dataY, validation_split=0.33, epochs=10, verbose=1)
 # # new instances where we do not know the answer
 
+
+# list all data in history
+print(history.history.keys())
+# summarize history for accuracy
+plt.plot(history.history['acc'])
+plt.plot(history.history['val_acc'])
+plt.title('model accuracy')
+plt.ylabel('accuracy')
+plt.xlabel('epoch')
+plt.legend(['train', 'test'], loc='upper left')
+plt.show()
+# summarize history for loss
+plt.plot(history.history['loss'])
+plt.plot(history.history['val_loss'])
+plt.title('model loss')
+plt.ylabel('loss')
+plt.xlabel('epoch')
+plt.legend(['train', 'test'], loc='upper left')
+plt.show()
+
+
 ynew = model.predict_classes(dataX[0:730])
+
+
+
 
 
 for i in range(0,730):
