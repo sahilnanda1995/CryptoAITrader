@@ -1,7 +1,7 @@
 # CryptoAITrader
 This contains bactesting scripts for BTC price prediction.
 
-![](assets/images/Screenshot 2019-12-15 at 6.52.47 PM.png)
+![](https://i.imgur.com/bqd7mgV.png)
 
 ## Different approaches used here:
 * **Retraining:** Retraining the model w.r.t. the new dataset(moving window).
